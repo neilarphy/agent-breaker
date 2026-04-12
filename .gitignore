@@ -1,0 +1,14 @@
+.env
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+dist/
+build/
+*.egg-info/
+logs/
+reports/
+data/chroma/
+checkpoints/
+.pytest_cache/

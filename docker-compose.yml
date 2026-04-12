@@ -1,0 +1,46 @@
+services:
+  agentbreaker:
+    build: .
+    command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
+    ports:
+      - "8501:8501"
+    env_file: .env
+    volumes:
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./data:/app/data
+    depends_on:
+      - mock-agent
+      - langfuse
+
+  mock-agent:
+    build: .
+    command: python mock_agent/main.py
+    ports:
+      - "8001:8001"
+    environment:
+      - MOCK_AGENT_PORT=8001
+
+  langfuse:
+    image: langfuse/langfuse:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
+      - NEXTAUTH_SECRET=changeme-secret-32chars-minimum!!
+      - NEXTAUTH_URL=http://localhost:3000
+      - SALT=changeme-salt
+    depends_on:
+      - langfuse-db
+
+  langfuse-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=langfuse
+      - POSTGRES_PASSWORD=langfuse
+      - POSTGRES_DB=langfuse
+    volumes:
+      - langfuse_db:/var/lib/postgresql/data
+
+volumes:
+  langfuse_db:
