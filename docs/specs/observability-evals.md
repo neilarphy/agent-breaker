@@ -211,7 +211,7 @@ structlog (JSON) → Loki → Grafana
 | **Cost per audit** | Стоимость одного аудита | Token counting × pricing | < $10 |
 | **Resume success rate** | % успешных resume из checkpoint | resume success / attempts | ≥ 95% |
 | **Circuit breaker recovery** | Время от OPEN до CLOSED | CB event timestamps | < 2 мин |
-| **Uptime (LLM API)** | Доступность BotHub | Success calls / total calls | ≥ 99% |
+| **Pipeline success rate** | Доля аудитов завершённых без критического сбоя — с учётом circuit breaker и fallback на partial report | completed / total runs | ≥ 90% |
 | **Log completeness** | Все шаги залогированы | Check event types coverage | 100% |
 
 ### Eval Scripts
