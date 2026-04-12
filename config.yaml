@@ -1,0 +1,77 @@
+# AgentBreaker Configuration
+
+llm:
+  base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
+  api_key: "${GEMINI_API_KEY}"
+  orchestrator_model: "gemini-2.0-flash"
+  analyzer_model: "gemini-2.0-flash"
+  judge_model: "gemini-2.0-flash-lite"
+  temperature: 0.2
+  pricing:
+    gemini-2.0-flash:
+      input: 0.10
+      output: 0.40
+    gemini-2.0-flash-lite:
+      input: 0.075
+      output: 0.30
+
+repo:
+  max_files: 50
+  priority_patterns:
+    - "agent/**"
+    - "tools/**"
+    - "prompts/**"
+    - "memory/**"
+  include_extensions:
+    - ".py"
+    - ".ts"
+    - ".js"
+    - ".yaml"
+    - ".yml"
+    - ".json"
+    - ".md"
+  secret_patterns:
+    - "sk-[a-zA-Z0-9]{20,}"
+    - "ghp_[a-zA-Z0-9]{36}"
+    - "(?i)password\\s*=\\s*['\"][^'\"]{4,}"
+    - "(?i)api_key\\s*=\\s*['\"][^'\"]{10,}"
+    - "(?i)secret\\s*=\\s*['\"][^'\"]{10,}"
+
+sandbox:
+  timeout_per_request: 30
+  timeout_per_session: 120
+  max_attacks: 50
+  max_multiturn_sessions: 5
+  max_turns_per_session: 5
+  allowed_endpoints:
+    - "localhost"
+    - "127.0.0.1"
+
+cost:
+  warning_threshold_usd: 8.0
+  hard_limit_usd: 10.0
+
+circuit_breaker:
+  threshold: 3
+  cooldown_seconds: 60
+
+rag:
+  chroma_path: "./data/chroma"
+  collection_name: "owasp_llm_top10"
+  embedding_model: "all-MiniLM-L6-v2"
+  top_k: 5
+  chunk_size: 500
+  chunk_overlap: 50
+
+github:
+  max_issues_per_session: 10
+
+langfuse:
+  enabled: true
+  host: "${LANGFUSE_HOST}"
+  public_key: "${LANGFUSE_PUBLIC_KEY}"
+  secret_key: "${LANGFUSE_SECRET_KEY}"
+
+logging:
+  level: "INFO"
+  file: "./logs/agentbreaker.jsonl"
