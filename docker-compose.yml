@@ -5,6 +5,8 @@ services:
     ports:
       - "8501:8501"
     env_file: .env
+    environment:
+      - DEFAULT_ENDPOINT=http://mock-agent:8001
     volumes:
       - ./logs:/app/logs
       - ./reports:/app/reports

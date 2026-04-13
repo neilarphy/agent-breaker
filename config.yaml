@@ -46,6 +46,7 @@ sandbox:
   allowed_endpoints:
     - "localhost"
     - "127.0.0.1"
+    - "mock-agent"
 
 cost:
   warning_threshold_usd: 8.0

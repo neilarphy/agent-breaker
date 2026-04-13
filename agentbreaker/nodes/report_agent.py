@@ -5,8 +5,8 @@ from datetime import datetime
 import structlog
 from openai import OpenAI
 
-from agentbreaker.cost_tracker import CostTracker
 from agentbreaker.observability import get_langfuse
+from agentbreaker.run_context import get_run_context
 from agentbreaker.state import AgentState
 
 log = structlog.get_logger()
@@ -42,9 +42,8 @@ def report_agent_node(state: AgentState) -> dict:
     judgements = state.get("judgements", [])
     attack_plans = {a["id"]: a for a in state.get("attack_plans", [])}
     architecture_json = state.get("architecture_json", {})
-    cost_tracker: CostTracker = state["_cost_tracker"]
+    ctx = get_run_context()
     langfuse = get_langfuse()
-    trace = state.get("_langfuse_trace")
 
     client = OpenAI(api_key=config["llm"]["api_key"], base_url=config["llm"]["base_url"])
 
@@ -65,8 +64,8 @@ def report_agent_node(state: AgentState) -> dict:
             by_class[cls]["success"] += 1
 
     span = None
-    if langfuse and trace:
-        span = trace.span(name="report_agent", input={"findings_count": len(findings)})
+    if langfuse and ctx.langfuse_trace:
+        span = ctx.langfuse_trace.span(name="report_agent", input={"findings_count": len(findings)})
 
     user_content = (
         f"Repository: {state.get('repo_url', 'unknown')}\n"
@@ -87,7 +86,7 @@ def report_agent_node(state: AgentState) -> dict:
         ],
     )
 
-    cost_tracker.record(
+    ctx.cost_tracker.record(
         "report_agent", config["llm"]["orchestrator_model"],
         response.usage.prompt_tokens, response.usage.completion_tokens,
     )
@@ -106,7 +105,7 @@ def report_agent_node(state: AgentState) -> dict:
         "report_generated",
         report_path=report_path,
         findings_count=len(findings),
-        total_cost_usd=cost_tracker.total_cost_usd,
+        total_cost_usd=ctx.cost_tracker.total_cost_usd,
     )
 
     if span:
@@ -116,6 +115,5 @@ def report_agent_node(state: AgentState) -> dict:
         "report_path": report_path,
         "current_step": "report_agent",
         "pipeline_status": "completed",
-        "cost_tracker": cost_tracker.to_dict(),
-        "_report_content": report_md,
+        "cost_tracker": ctx.cost_tracker.to_dict(),
     }

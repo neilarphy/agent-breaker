@@ -6,8 +6,8 @@ from openai import OpenAI
 from pydantic import BaseModel, ValidationError
 
 from agentbreaker.circuit_breaker import CircuitBreaker, CircuitBreakerOpen
-from agentbreaker.cost_tracker import CostTracker
 from agentbreaker.observability import get_langfuse
+from agentbreaker.run_context import get_run_context
 from agentbreaker.state import AgentState
 
 log = structlog.get_logger()
@@ -106,13 +106,12 @@ def analyzer_node(state: AgentState) -> dict:
         api_key=config["llm"]["api_key"],
         base_url=config["llm"]["base_url"],
     )
-    cost_tracker: CostTracker = state["_cost_tracker"]
+    ctx = get_run_context()
     langfuse = get_langfuse()
-    trace = state.get("_langfuse_trace")
 
     span = None
-    if langfuse and trace:
-        span = trace.span(name="analyzer", input={"files_count": len(state.get("file_list", []))})
+    if langfuse and ctx.langfuse_trace:
+        span = ctx.langfuse_trace.span(name="analyzer", input={"files_count": len(state.get("file_list", []))})
 
     file_contents: dict[str, str] = state.get("file_contents", {})
     retry_counts = dict(state.get("retry_counts", {}))
@@ -127,12 +126,12 @@ def analyzer_node(state: AgentState) -> dict:
             content = _build_content(file_contents, simplified=simplified)
             raw_json, usage = _call_analyzer(client, config, content, simplified)
 
-            _, over_budget = cost_tracker.record(
+            _, over_budget = ctx.cost_tracker.record(
                 "analyzer", config["llm"]["analyzer_model"],
                 usage["prompt_tokens"], usage["completion_tokens"]
             )
             if over_budget:
-                log.warning("cost_warning", current_cost=cost_tracker.total_cost_usd)
+                log.warning("cost_warning", current_cost=ctx.cost_tracker.total_cost_usd)
 
             if raw_json is None:
                 raise ValueError("JSON parse failed")

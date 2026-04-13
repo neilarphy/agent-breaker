@@ -8,6 +8,7 @@ class AgentState(TypedDict):
 
     cloned_path: str
     file_list: list[str]
+    file_contents: dict[str, str]
 
     architecture_json: Optional[dict]
 

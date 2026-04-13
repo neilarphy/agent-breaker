@@ -16,6 +16,7 @@ from agentbreaker.nodes.report_agent import report_agent_node
 from agentbreaker.nodes.sandbox_runner import sandbox_runner_node
 from agentbreaker.nodes.threat_planner import threat_planner_node
 from agentbreaker.observability import get_langfuse
+from agentbreaker.run_context import RunContext, set_run_context
 from agentbreaker.state import AgentState
 
 
@@ -68,7 +69,8 @@ def _wrap_with_cost_guard(node_fn: Callable) -> Callable:
             return node_fn(state)
         except CostLimitExceeded as e:
             from agentbreaker.observability import get_logger
-            get_logger().error("cost_exceeded", error=str(e), cost=state["_cost_tracker"].total_cost_usd)
+            from agentbreaker.run_context import get_run_context as _get_ctx
+            get_logger().error("cost_exceeded", error=str(e), cost=_get_ctx().cost_tracker.total_cost_usd)
             return {
                 "pipeline_status": "failed",
                 "errors": state.get("errors", []) + [{
@@ -101,19 +103,25 @@ def build_graph(config_path: str = "config.yaml") -> StateGraph:
                     "endpoint": state.get("target_endpoint"),
                 },
             )
+        set_run_context(RunContext(cost_tracker=cost_tracker, langfuse_trace=trace))
         return {
             "config": config,
-            "_cost_tracker": cost_tracker,
-            "_langfuse_trace": trace,
-            "started_at": datetime.utcnow().isoformat(),
-            "pipeline_status": "running",
-            "errors": [],
-            "retry_counts": {},
+            "cloned_path": "",
+            "file_list": [],
+            "file_contents": {},
+            "architecture_json": None,
             "threat_model": [],
             "attack_plans": [],
             "attack_results": [],
             "judgements": [],
+            "report_path": None,
             "issues_created": [],
+            "errors": [],
+            "retry_counts": {},
+            "cost_tracker": {},
+            "current_step": "init",
+            "pipeline_status": "running",
+            "started_at": datetime.utcnow().isoformat(),
             "langfuse_trace_id": trace.id if trace else None,
         }
 
@@ -161,6 +169,7 @@ def run_audit(repo_url: str, target_endpoint: str, config_path: str = "config.ya
         "config": {},
         "cloned_path": "",
         "file_list": [],
+        "file_contents": {},
         "architecture_json": None,
         "threat_model": [],
         "attack_plans": [],

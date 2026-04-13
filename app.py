@@ -9,6 +9,10 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+APP_DIR = os.path.dirname(os.path.abspath(__file__))
+LOG_FILE = os.path.join(APP_DIR, "logs", "agentbreaker.jsonl")
+os.makedirs(os.path.join(APP_DIR, "logs"), exist_ok=True)
+
 st.set_page_config(
     page_title="AgentBreaker",
     page_icon="🔴",
@@ -112,7 +116,7 @@ with col1:
 with col2:
     endpoint = st.text_input(
         "Target Endpoint",
-        value="http://localhost:8001",
+        value=os.getenv("DEFAULT_ENDPOINT", "http://localhost:8001"),
     )
 
 run_btn = st.button("🚀 Run Audit", type="primary", disabled=not repo_url)
@@ -149,7 +153,7 @@ if run_btn and repo_url:
 
     while not result_container["done"]:
         try:
-            with open("logs/agentbreaker.jsonl", "r") as f:
+            with open(LOG_FILE, "r") as f:
                 lines = f.readlines()[-20:]
 
             for line in lines:

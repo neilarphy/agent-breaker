@@ -9,7 +9,7 @@ from agentbreaker.state import AgentState
 
 log = structlog.get_logger()
 
-ALLOWED_HOSTS = re.compile(r"^(localhost|127\.0\.0\.1)(:\d+)?$")
+ALLOWED_HOSTS = re.compile(r"^(localhost|127\.0\.0\.1|mock-agent)(:\d+)?$")
 
 
 def _is_allowed_endpoint(endpoint: str) -> bool:

@@ -3,8 +3,8 @@ import json
 import structlog
 from openai import OpenAI
 
-from agentbreaker.cost_tracker import CostTracker
 from agentbreaker.observability import get_langfuse
+from agentbreaker.run_context import get_run_context
 from agentbreaker.state import AgentState
 
 log = structlog.get_logger()
@@ -38,9 +38,8 @@ def judge_node(state: AgentState) -> dict:
     config = state["config"]
     attack_plans = {a["id"]: a for a in state.get("attack_plans", [])}
     attack_results = state.get("attack_results", [])
-    cost_tracker: CostTracker = state["_cost_tracker"]
+    ctx = get_run_context()
     langfuse = get_langfuse()
-    trace = state.get("_langfuse_trace")
 
     client = OpenAI(api_key=config["llm"]["api_key"], base_url=config["llm"]["base_url"])
     judgements = []
@@ -70,8 +69,8 @@ def judge_node(state: AgentState) -> dict:
             response_text = f"Multi-turn session:\n{turns_summary}"
 
         span = None
-        if langfuse and trace:
-            span = trace.span(name=f"judge_{atk_id}", input={"attack_id": atk_id})
+        if langfuse and ctx.langfuse_trace:
+            span = ctx.langfuse_trace.span(name=f"judge_{atk_id}", input={"attack_id": atk_id})
 
         user_content = (
             f"Attack class: {result.get('attack_class', '')}\n"
@@ -89,7 +88,7 @@ def judge_node(state: AgentState) -> dict:
             ],
         )
 
-        cost_tracker.record(
+        ctx.cost_tracker.record(
             f"judge_{atk_id}", config["llm"]["judge_model"],
             resp.usage.prompt_tokens, resp.usage.completion_tokens,
         )

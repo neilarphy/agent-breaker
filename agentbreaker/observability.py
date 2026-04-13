@@ -6,7 +6,10 @@ import structlog
 from langfuse import Langfuse
 
 
-def setup_logging(log_file: str = "./logs/agentbreaker.jsonl", level: str = "INFO"):
+def setup_logging(log_file: str | None = None, level: str = "INFO"):
+    if log_file is None:
+        base = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        log_file = os.path.join(base, "logs", "agentbreaker.jsonl")
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
 
     logging.basicConfig(

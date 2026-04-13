@@ -6,8 +6,8 @@ import structlog
 from chromadb.utils import embedding_functions
 from openai import OpenAI
 
-from agentbreaker.cost_tracker import CostTracker
 from agentbreaker.observability import get_langfuse
+from agentbreaker.run_context import get_run_context
 from agentbreaker.state import AgentState
 
 log = structlog.get_logger()
@@ -74,13 +74,12 @@ def threat_planner_node(state: AgentState) -> dict:
 
     config = state["config"]
     architecture_json = state["architecture_json"]
-    cost_tracker: CostTracker = state["_cost_tracker"]
+    ctx = get_run_context()
     langfuse = get_langfuse()
-    trace = state.get("_langfuse_trace")
 
     span = None
-    if langfuse and trace:
-        span = trace.span(name="threat_planner", input={"tools_count": len(architecture_json.get("tools", []))})
+    if langfuse and ctx.langfuse_trace:
+        span = ctx.langfuse_trace.span(name="threat_planner", input={"tools_count": len(architecture_json.get("tools", []))})
 
     owasp_context = _query_owasp(config, architecture_json)
 
@@ -100,7 +99,7 @@ def threat_planner_node(state: AgentState) -> dict:
         ],
     )
 
-    cost_tracker.record(
+    ctx.cost_tracker.record(
         "threat_planner", config["llm"]["orchestrator_model"],
         response.usage.prompt_tokens, response.usage.completion_tokens,
     )
