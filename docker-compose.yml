@@ -3,10 +3,11 @@ services:
     build: .
     command: streamlit run app.py --server.port 8501 --server.address 0.0.0.0
     ports:
-      - "8501:8501"
+      - "9501:8501"
     env_file: .env
     environment:
       - DEFAULT_ENDPOINT=http://mock-agent:8001
+      - LANGFUSE_HOST=http://langfuse:3000
     volumes:
       - ./logs:/app/logs
       - ./reports:/app/reports
@@ -19,18 +20,18 @@ services:
     build: .
     command: python mock_agent/main.py
     ports:
-      - "8001:8001"
+      - "9801:8001"
     environment:
       - MOCK_AGENT_PORT=8001
 
   langfuse:
     image: langfuse/langfuse:latest
     ports:
-      - "3000:3000"
+      - "9300:3000"
     environment:
       - DATABASE_URL=postgresql://langfuse:langfuse@langfuse-db:5432/langfuse
       - NEXTAUTH_SECRET=changeme-secret-32chars-minimum!!
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=http://localhost:9300
       - SALT=changeme-salt
     depends_on:
       - langfuse-db
