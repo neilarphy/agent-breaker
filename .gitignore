@@ -12,3 +12,4 @@ reports/
 data/chroma/
 checkpoints/
 .pytest_cache/
+vulnerable*/

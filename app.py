@@ -32,6 +32,37 @@ STEP_ORDER = [
     ("report_agent", "Generate report"),
 ]
 
+EVENT_TO_STEP = {
+    "repo_cloner_started": "repo_cloner",
+    "repo_cloned": "repo_cloner",
+    "analyzer_started": "analyzer",
+    "analyzer_completed": "analyzer",
+    "threat_planner_started": "threat_planner",
+    "threat_model_built": "threat_planner",
+    "attack_generator_started": "attack_generator",
+    "attacks_generated": "attack_generator",
+    "attack_executed": "sandbox_runner",
+    "multiturn_session": "sandbox_runner",
+    "sandbox_runner_completed": "sandbox_runner",
+    "judge_started": "judge",
+    "judge_result": "judge",
+    "judge_completed": "judge",
+    "report_agent_started": "report_agent",
+    "report_generated": "report_agent",
+}
+
+STEP_DONE_EVENTS = {
+    "repo_cloned", "analyzer_completed", "threat_model_built",
+    "attacks_generated", "sandbox_runner_completed", "judge_completed",
+    "report_generated",
+}
+
+STEP_STARTED_EVENTS = {
+    "repo_cloner_started", "analyzer_started", "threat_planner_started",
+    "attack_generator_started", "attack_executed", "judge_started",
+    "report_agent_started",
+}
+
 SEVERITY_COLORS = {
     "critical": "🔴",
     "high": "🟠",
@@ -69,16 +100,16 @@ def _run_audit_thread(repo_url: str, endpoint: str, result_container: dict):
 with st.sidebar:
     st.header("Configuration")
 
-    if os.getenv("GEMINI_API_KEY"):
-        st.success("Gemini API Key: configured")
+    if os.getenv("LLM_API_KEY"):
+        st.success("LLM API Key: configured")
     else:
-        gemini_key = st.text_input(
-            "Gemini API Key",
+        llm_key = st.text_input(
+            "LLM API Key",
             type="password",
-            help="Google AI Studio key — never shown in output",
+            help="API key for your LLM provider — never shown in output",
         )
-        if gemini_key:
-            os.environ["GEMINI_API_KEY"] = gemini_key
+        if llm_key:
+            os.environ["LLM_API_KEY"] = llm_key
 
     github_token = st.text_input(
         "GitHub Token (optional)",
@@ -109,6 +140,22 @@ with st.sidebar:
             else:
                 st.error(r.stderr.strip())
 
+    st.divider()
+    st.subheader("Audit History")
+    reports_dir = os.path.join(APP_DIR, "reports")
+    report_files = sorted(
+        [f for f in os.listdir(reports_dir) if f.endswith(".md")],
+        reverse=True,
+    ) if os.path.isdir(reports_dir) else []
+
+    if report_files:
+        selected = st.selectbox("Past reports", report_files, label_visibility="collapsed")
+        if st.button("Load report"):
+            with open(os.path.join(reports_dir, selected)) as f:
+                st.session_state["loaded_report"] = (selected, f.read())
+    else:
+        st.caption("No reports yet")
+
 col1, col2 = st.columns([3, 1])
 with col1:
     repo_url = st.text_input(
@@ -124,8 +171,8 @@ with col2:
 run_btn = st.button("🚀 Run Audit", type="primary", disabled=not repo_url)
 
 if run_btn and repo_url:
-    if not os.getenv("GEMINI_API_KEY"):
-        st.error("Set your Gemini API Key in the sidebar first.")
+    if not os.getenv("LLM_API_KEY"):
+        st.error("Set your LLM API Key in the sidebar first.")
         st.stop()
 
     st.divider()
@@ -140,6 +187,8 @@ if run_btn and repo_url:
 
     log_area = st.empty()
     status_area = st.empty()
+
+    log_start_pos = os.path.getsize(LOG_FILE) if os.path.exists(LOG_FILE) else 0
 
     result_container: dict = {"done": False, "state": None, "error": None}
     thread = threading.Thread(
@@ -156,19 +205,20 @@ if run_btn and repo_url:
     while not result_container["done"]:
         try:
             with open(LOG_FILE, "r") as f:
+                f.seek(log_start_pos)
                 lines = f.readlines()[-20:]
 
             for line in lines:
                 import json as _json
                 try:
                     entry = _json.loads(line)
-                    step = entry.get("step") or entry.get("event", "").split("_")[0]
-                    if step in step_placeholders and step not in completed_steps:
-                        event = entry.get("event", "")
-                        if "completed" in event or "generated" in event or "built" in event or "cloned" in event:
+                    event = entry.get("event", "")
+                    step = EVENT_TO_STEP.get(event)
+                    if step and step in step_placeholders and step not in completed_steps:
+                        if event in STEP_DONE_EVENTS:
                             step_placeholders[step].markdown(f"✅ {dict(STEP_ORDER).get(step, step)}")
                             completed_steps.add(step)
-                        elif "started" in event:
+                        elif event in STEP_STARTED_EVENTS:
                             f_char = spinner_frames[frame_idx % len(spinner_frames)]
                             step_placeholders[step].markdown(f"{f_char} {dict(STEP_ORDER).get(step, step)}")
                 except Exception:
@@ -192,6 +242,13 @@ if run_btn and repo_url:
     if not final_state:
         st.error("No result returned.")
         st.stop()
+
+    st.session_state["final_state"] = final_state
+    st.session_state["audit_repo_url"] = repo_url
+
+if "final_state" in st.session_state:
+    final_state = st.session_state["final_state"]
+    audit_repo_url = st.session_state.get("audit_repo_url", "")
 
     st.divider()
 
@@ -243,7 +300,7 @@ if run_btn and repo_url:
         if st.button("Create GitHub Issues"):
             from github import Github
             g = Github(os.getenv("GITHUB_TOKEN"))
-            repo_name = "/".join(repo_url.rstrip("/").split("/")[-2:])
+            repo_name = "/".join(audit_repo_url.rstrip("/").split("/")[-2:])
             try:
                 gh_repo = g.get_repo(repo_name)
                 for j in eligible[:10]:
@@ -262,3 +319,10 @@ if run_btn and repo_url:
                     st.success(f"Created: {issue.html_url}")
             except Exception as e:
                 st.error(f"Failed: {e}")
+
+if "loaded_report" in st.session_state:
+    name, content = st.session_state["loaded_report"]
+    st.divider()
+    st.subheader(f"Report: {name}")
+    st.markdown(content)
+    st.download_button("Download", data=content, file_name=name)

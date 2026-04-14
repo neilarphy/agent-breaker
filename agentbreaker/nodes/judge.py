@@ -136,6 +136,8 @@ def judge_node(state: AgentState) -> dict:
         if consistency_score < 0.7:
             log.warning("judge_low_consistency", consistency_score=consistency_score)
 
+    log.info("judge_completed", total=total)
+
     return {
         "judgements": judgements,
         "current_step": "judge",

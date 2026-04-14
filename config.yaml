@@ -1,19 +1,19 @@
 # AgentBreaker Configuration
 
 llm:
-  base_url: "https://generativelanguage.googleapis.com/v1beta/openai/"
-  api_key: "${GEMINI_API_KEY}"
-  orchestrator_model: "gemini-2.0-flash"
-  analyzer_model: "gemini-2.0-flash"
-  judge_model: "gemini-2.0-flash-lite"
+  base_url: "${LLM_BASE_URL}"
+  api_key: "${LLM_API_KEY}"
+  orchestrator_model: "${LLM_ORCHESTRATOR_MODEL}"
+  analyzer_model: "${LLM_ANALYZER_MODEL}"
+  judge_model: "${LLM_JUDGE_MODEL}"
   temperature: 0.2
   pricing:
-    gemini-2.0-flash:
-      input: 0.10
-      output: 0.40
-    gemini-2.0-flash-lite:
-      input: 0.075
-      output: 0.30
+    gpt-4o-mini:
+      input: 0.15
+      output: 0.60
+    gpt-4o:
+      input: 2.50
+      output: 10.00
 
 repo:
   max_files: 50
@@ -47,6 +47,7 @@ sandbox:
     - "localhost"
     - "127.0.0.1"
     - "mock-agent"
+    - "5.129.220.203"
 
 cost:
   warning_threshold_usd: 8.0
