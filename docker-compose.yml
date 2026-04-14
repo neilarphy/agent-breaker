@@ -25,7 +25,7 @@ services:
       - MOCK_AGENT_PORT=8001
 
   langfuse:
-    image: langfuse/langfuse:latest
+    image: langfuse/langfuse:2
     ports:
       - "9300:3000"
     environment:

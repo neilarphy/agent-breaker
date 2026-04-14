@@ -69,14 +69,16 @@ def _run_audit_thread(repo_url: str, endpoint: str, result_container: dict):
 with st.sidebar:
     st.header("Configuration")
 
-    gemini_key = st.text_input(
-        "Gemini API Key",
-        type="password",
-        value=os.getenv("GEMINI_API_KEY", ""),
-        help="Google AI Studio key — never shown in output",
-    )
-    if gemini_key:
-        os.environ["GEMINI_API_KEY"] = gemini_key
+    if os.getenv("GEMINI_API_KEY"):
+        st.success("Gemini API Key: configured")
+    else:
+        gemini_key = st.text_input(
+            "Gemini API Key",
+            type="password",
+            help="Google AI Studio key — never shown in output",
+        )
+        if gemini_key:
+            os.environ["GEMINI_API_KEY"] = gemini_key
 
     github_token = st.text_input(
         "GitHub Token (optional)",
